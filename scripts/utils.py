@@ -1,7 +1,7 @@
 import os
 
 import pygame
-
+pygame.init()
 BASE_IMG_PATH = 'data/images/'
 
 

@@ -11,14 +11,36 @@ from scripts.particle import Particle
 
 import random
 
+GAME_SIZE = 320, 240
+SCREEN_SIZE = 1280, 960
+FPS = 60
+
+class Camera:
+    def __init__(self):
+        self.scroll = [0, 0]
+        self.screenshake = 0
+        self.screenshake_offset = [0, 0]
+
+    def set_screenshake(self, screenshake):
+        self.screenshake = max(self.screenshake, screenshake)
+
+    def update(self, pos):
+
+        self.scroll[0] += (pos[0] - self.scroll[0]) / 30
+        self.scroll[1] += (pos[1] - self.scroll[1]) / 30
+        self.scroll = [int(self.scroll[0]), int(self.scroll[1])]
+        print((pos[1] - self.scroll[1]) / 80)
+        self.screenshake = max(0, self.screenshake - 1)
+        self.screenshake_offset = (random.uniform(0, self.screenshake) - self.screenshake / 2,
+                              random.uniform(0, self.screenshake) - self.screenshake / 2)
 
 class Game:
     def __init__(self):
         pygame.init()
         pygame.display.set_caption("Test Ninja Game")
-        self.screen = pygame.display.set_mode((1280, 960))
-        self.display = pygame.Surface((320, 240), pygame.SRCALPHA)
-        self.display_2 = pygame.Surface((320, 240))
+        self.screen = pygame.display.set_mode(SCREEN_SIZE)
+        self.display = pygame.Surface(GAME_SIZE, pygame.SRCALPHA)
+        self.display_2 = pygame.Surface(GAME_SIZE)
 
         self.clock = pygame.time.Clock()
 
@@ -60,7 +82,6 @@ class Game:
         self.sfx['dash'].set_volume(0.3)
         self.sfx['jump'].set_volume(0.7)
 
-
         self.clouds = Clouds(self.assets['clouds'], count=128)
         self.player = Player(self, (50, 50), (8, 15))
 
@@ -69,7 +90,7 @@ class Game:
         self.transition = -30
         self.load_level(self.level)
 
-        self.screenshake = 0
+        self.camera = Camera()
 
 
     def load_level(self, map_id):
@@ -106,7 +127,6 @@ class Game:
             self.display.fill((0, 0, 0, 0))
             self.display_2.blit(self.assets['background'], (0, 0))
 
-            self.screenshake = max(0, self.screenshake - 1)
 
             if not len(self.enemies):
                 self.transition += 1
@@ -123,9 +143,10 @@ class Game:
                 if self.dead > 40:
                     self.load_level(self.level)
 
-            self.scroll[0] += (self.player.rect().centerx - self.display.get_width() / 2 - self.scroll[0]) / 30
-            self.scroll[1] += (self.player.rect().centery - self.display.get_height() / 2 - self.scroll[1]) / 30
-            render_scroll = (int(self.scroll[0]), int(self.scroll[1]))
+            self.camera.update([self.player.rect().centerx - self.display.get_width() / 2,
+                               self.player.rect().centery - self.display.get_height() / 2])
+
+            render_scroll = self.camera.scroll
 
             for rect in self.leaf_spawners:
                 if random.randint(0, 50000) < rect.width * rect.height:
@@ -168,7 +189,7 @@ class Game:
                         self.projectiles.remove(projectile)
                         self.dead += 1
                         self.sfx['hit'].play()
-                        self.screenshake = max(64, self.screenshake)
+                        self.camera.set_screenshake(64)
                         for i in range(30):
                             angle = random.uniform(0, math.pi * 2)
                             speed = random.uniform(1, 5)
@@ -231,11 +252,9 @@ class Game:
 
             self.display_2.blit(self.display, (0, 0))
 
-            screenshake_offset = (random.uniform(0, self.screenshake) - self.screenshake / 2,
-                                  random.uniform(0, self.screenshake) - self.screenshake / 2)
-            self.screen.blit(pygame.transform.scale(self.display_2, self.screen.get_size()), screenshake_offset)
+            self.screen.blit(pygame.transform.scale(self.display_2, self.screen.get_size()), self.camera.screenshake_offset)
             pygame.display.update()
-            self.clock.tick(60)
+            self.clock.tick(FPS)
 
 
 Game().run()
